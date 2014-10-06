@@ -241,7 +241,8 @@ func (v *DeviceInfo) GetFriendlyName() string {
 
 func (v *DeviceInfo) ListDevices() []*DeviceInfo {
 	c := C.gupnp_device_info_list_devices(v.Native())
-	glist := glib.ListFromNative(unsafe.Pointer(c))
+	glist := (*glib.List)(unsafe.Pointer(c))
+	// glist := glib.ListFromNative(unsafe.Pointer(c))
 	// log.Info("len", C.g_list_length(c))
 	devices := make([]*DeviceInfo, glist.Length())
 	// The returned list should be g_list_free()'d and the elements should be g_object_unref()'d.

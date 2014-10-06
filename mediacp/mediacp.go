@@ -64,8 +64,8 @@ func New() (*MediaControl, error) {
 const (
 	ActionNone = iota
 	ActionToggleMute
-	ActionVolumeUp
 	ActionVolumeDown
+	ActionVolumeUp
 	ActionPlayPause
 	ActionStop
 	ActionSeekBackward
@@ -82,23 +82,23 @@ func (cp *MediaControl) Action(action int) {
 	case ActionToggleMute:
 		renderer.ToggleMute()
 
-	case ActionVolumeUp:
-		renderer.SetVolumeDelta(cp.volumeDelta)
-
 	case ActionVolumeDown:
 		renderer.SetVolumeDelta(-cp.volumeDelta)
 
+	case ActionVolumeUp:
+		renderer.SetVolumeDelta(cp.volumeDelta)
+
 	case ActionPlayPause:
 		renderer.PlayPause()
+
+	case ActionStop:
+		renderer.Stop()
 
 	case ActionSeekBackward:
 		cp.SetSeek(cp.GetCurrentTime() - cp.seekDelta)
 
 	case ActionSeekForward:
 		cp.SetSeek(cp.GetCurrentTime() + cp.seekDelta)
-
-	case ActionStop:
-		renderer.Stop()
 	}
 }
 

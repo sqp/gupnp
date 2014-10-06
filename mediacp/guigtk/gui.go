@@ -5,6 +5,7 @@ import (
 	"github.com/conformal/gotk3/gtk"
 
 	"github.com/sqp/godock/widgets/buildHelper"
+	// "github.com/sqp/godock/widgets/common"
 
 	"github.com/sqp/godock/libs/log"
 
@@ -149,19 +150,12 @@ func NewTVGui(control *mediacp.MediaControl) *TVGui {
 		control: control,
 	}
 
-	log.DEV("be", builder.Errors)
-
-	// Add stock icons on buttons. Forced to do that manually to prevent text on icons.
-
-	// imgplay, _ := gtk.ImageNewFromIconName("media-playback-start", gtk.ICON_SIZE_SMALL_TOOLBAR)
-	// imgstop, _ := gtk.ImageNewFromIconName("media-playback-stop", gtk.ICON_SIZE_SMALL_TOOLBAR)
-	// imgback, _ := gtk.ImageNewFromIconName("media-seek-backward", gtk.ICON_SIZE_SMALL_TOOLBAR)
-	// imgforward, _ := gtk.ImageNewFromIconName("media-seek-forward", gtk.ICON_SIZE_SMALL_TOOLBAR)
-
-	// gui.play.SetImage(imgplay)
-	// gui.stop.SetImage(imgstop)
-	// gui.backward.SetImage(imgback)
-	// gui.forward.SetImage(imgforward)
+	if len(builder.Errors) > 0 {
+		for _, e := range builder.Errors {
+			log.DEV("build tvgui", e)
+		}
+		return nil
+	}
 
 	// Connect events.
 	gui.callRenderer, _ = gui.renderer.Connect("changed", gui.onRendererChanged)
