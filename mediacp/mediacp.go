@@ -1,3 +1,5 @@
+// Package mediacp manages media renderers and servers on the UPnP network.
+//
 // Digital media servers (DMS)
 // A database of multimedia content, that other devices can play media from
 // Digital media renderers (DMR)
@@ -17,6 +19,8 @@ import (
 //
 //------------------------------------------------------------[ MEDIACONTROL ]--
 
+// MediaControl manages media renderers and servers on the UPnP network.
+//
 type MediaControl struct {
 	upnpcp.ControlPoint
 
@@ -36,6 +40,8 @@ type MediaControl struct {
 	tmpDir string
 }
 
+// New creates a new MediaControl manager.
+//
 func New() (*MediaControl, error) {
 
 	media := &MediaControl{
@@ -59,7 +65,7 @@ func New() (*MediaControl, error) {
 //
 //-----------------------------------------------------------------[ ACTIONS ]--
 
-// List of simple actions defined by the media controler.
+// Actions defined by the media controler.
 //
 const (
 	ActionNone = iota
@@ -72,6 +78,8 @@ const (
 	ActionSeekForward
 )
 
+// Action sends an action message to the selected renderer.
+//
 func (cp *MediaControl) Action(action int) {
 	renderer := cp.Renderer()
 	if renderer == nil {
@@ -155,7 +163,7 @@ func (cp *MediaControl) Renderers() upnpcp.Renderers {
 //
 //-----------------------------------------------------------------[ SERVERS ]--
 
-// Renderer return the current server if any.
+// Server return the current server if any.
 //
 func (cp *MediaControl) Server() *upnpcp.Server {
 	return cp.server
@@ -205,21 +213,30 @@ func (cp *MediaControl) Servers() map[string]*upnpcp.Server {
 //
 //-----------------------------------------------------------------[ ?? ]--
 
+// SetVolumeDelta configures the default volume delta for user actions.
+//
 func (cp *MediaControl) SetVolumeDelta(delta int) {
 	cp.volumeDelta = delta
 	cp.onSetVolumeDelta(delta)
 }
 
+// SetVolumeDelta configures the default volume delta for user actions.
+//
 func (cp *MediaControl) SetSeekDelta(delta int) {
 	cp.seekDelta = delta
 	cp.onSetSeekDelta(delta)
 }
 
+// SetPreferredRenderer sets the renderer that will be selected if found (unless anoter is selected).
+//
 func (cp *MediaControl) SetPreferredRenderer(name string) {
 	cp.preferredRenderer = name
 	cp.setRendererDefault()
 	// cp.onSetPreferredRenderer(name)
 }
+
+// SetPreferredServer sets the server that will be selected if found (unless anoter is selected)..
+//
 func (cp *MediaControl) SetPreferredServer(name string) {
 	cp.preferredServer = name
 	cp.setServerDefault()
@@ -228,11 +245,15 @@ func (cp *MediaControl) SetPreferredServer(name string) {
 //
 //------------------------------------------------------------------[ BROWSE ]--
 
+// Browse lists files on a server.
+//
 func (cp *MediaControl) Browse(container string, startingIndex uint) ([]upnpcp.Container, []upnpcp.Item, uint, uint) {
 
 	return cp.server.Browse(container, startingIndex, uint(upnpcp.MAX_BROWSE))
 }
 
+// BrowseMetadata starts the playback of the given file on the selected renderer.
+//
 func (cp *MediaControl) BrowseMetadata(container string, startingIndex uint) { //([]upnpcp.Container, []upnpcp.Item, uint, uint) {
 	_, items, didlxml := cp.server.BrowseMetadata(container, startingIndex, uint(upnpcp.MAX_BROWSE))
 	for _, item := range items {
@@ -250,7 +271,7 @@ func (cp *MediaControl) BrowseMetadata(container string, startingIndex uint) { /
 //
 //--------------------------------------------------------------------[ TIME ]--
 
-// Seek to new time in track. Input in seconds.
+// SetSeek seeks to new time in track. Input in seconds.
 //
 func (cp *MediaControl) SetSeek(secs int) {
 	if cp.Renderer() != nil {
@@ -261,7 +282,7 @@ func (cp *MediaControl) SetSeek(secs int) {
 	}
 }
 
-// Seek to new time in track. Input is the percent position in track. Range 0 to 100.
+// SetSeekPercent seeks to new time in track. Input is the percent position in track. Range 0 to 100.
 //
 func (cp *MediaControl) SetSeekPercent(value float64) {
 	if cp.Renderer() != nil {
@@ -271,6 +292,8 @@ func (cp *MediaControl) SetSeekPercent(value float64) {
 
 // target = "%d:%02d:%02d" % (hours,minutes,seconds)
 
+// GetCurrentTime returns the current track position on selected server in seconds.
+//
 func (cp *MediaControl) GetCurrentTime() int {
 	if cp.Renderer() != nil {
 		return cp.Renderer().GetCurrentTime()
@@ -278,7 +301,7 @@ func (cp *MediaControl) GetCurrentTime() int {
 	return -1
 }
 
-// input in seconds. output as "15:04:05" format for seek requests.
+// TimeToString format time input in seconds. output as "15:04:05" format for seek requests.
 //
 func TimeToString(sec int) string {
 	newtime := time.Time{}.Add(time.Duration(sec) * time.Second)
@@ -415,6 +438,8 @@ func (cp *MediaControl) onMediaServerLost(stest *upnpcp.Server) {
 //
 //-------------------------------------------------------------------[ HOOKS ]--
 
+// MediaHook provides a registration method to media events for multiple clients.
+//
 type MediaHook struct {
 	upnpcp.ControlPointEvents
 	upnpcp.RendererEvents
@@ -426,12 +451,16 @@ type MediaHook struct {
 	OnServerSelected   func(*upnpcp.Server)
 }
 
+// SubscribeHook register a new hook client and returns the MediaHook to connect to.
+//
 func (cp *MediaControl) SubscribeHook(id string) *MediaHook {
 	newHook := &MediaHook{RendererEvents: upnpcp.RendererEvents{}}
 	cp.hooks[id] = newHook
 	return newHook
 }
 
+// UnsubscribeHook removes a client hook.
+//
 func (cp *MediaControl) UnsubscribeHook(id string) {
 	delete(cp.hooks, id)
 }

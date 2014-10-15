@@ -5,7 +5,7 @@ import (
 	"github.com/conformal/gotk3/gtk"
 
 	"github.com/sqp/godock/widgets/buildHelper"
-	// "github.com/sqp/godock/widgets/common"
+	"github.com/sqp/godock/widgets/common"
 
 	"github.com/sqp/godock/libs/log"
 
@@ -13,25 +13,29 @@ import (
 	"github.com/sqp/gupnp/upnpcp"
 )
 
+// Window settings.
 const (
 	WindowTitle  = "TVPlay"
 	WindowWidth  = 250
 	WindowHeight = 400
 )
 
+// Rows for renderer and server comboboxes.
 const (
 	RowIcon = iota
 	RowText
 	RowRenderer // Object
 	RowUDN      // ID
-	RowSeriesId
+	RowSeriesID
 	RowVisible
 )
 
-func NewGui(control *mediacp.MediaControl, show bool) *TVGui {
+// NewGui creates a window with a TVGui widget.
+//
+func NewGui(control *mediacp.MediaControl, show bool) (*TVGui, *gtk.Window) {
 	gui := NewTVGui(control)
 	if gui == nil {
-		return nil
+		return nil, nil
 	}
 	gui.Connect("destroy", func() {
 		gui.Destroy()
@@ -52,15 +56,8 @@ func NewGui(control *mediacp.MediaControl, show bool) *TVGui {
 	if !show {
 		window.Iconify()
 	}
-	return gui
+	return gui, window
 }
-
-// 	window.SetIconFromFile("icon") // TODO: debug  path.Join(localDir, "data/icon.png")
-// 	window.Connect("destroy", func() {
-// 		window.Destroy()
-// 		window = nil
-// 		gtk.MainQuit()
-// 	})
 
 // TVGui is a media renderer selector widget using ComboBox.
 //
@@ -102,12 +99,11 @@ type TVGui struct {
 	control *mediacp.MediaControl
 }
 
-// TVGuiNew creates a new TVGui widget.
+// NewTVGui creates a new TVGui widget.
 //
 // Parameters:
 //   control   *MediaControl     The UPnP media control point interface.
 //
-// func TVGuiNew() *TVGui {
 func NewTVGui(control *mediacp.MediaControl) *TVGui {
 
 	builder := buildHelper.New()
@@ -171,19 +167,17 @@ func NewTVGui(control *mediacp.MediaControl) *TVGui {
 	gui.backward.Connect("clicked", func() { gui.control.Action(mediacp.ActionSeekBackward) })
 	gui.forward.Connect("clicked", func() { gui.control.Action(mediacp.ActionSeekForward) })
 
-	// gui.Load()
 	gui.ConnectControl()
 
 	return gui
 }
 
-// Load renderers and servers to their combo boxes.
+// Load fills renderers and servers combo boxes.
 //
 func (gui *TVGui) Load() {
 	gui.SetPlaybackState(upnpcp.PlaybackStateUnknown)
 
 	for _, rend := range gui.control.Renderers() {
-		// log.Info(rend.Name)
 		gui.AddRenderer(rend)
 	}
 
@@ -195,6 +189,8 @@ func (gui *TVGui) Load() {
 //
 //-------------------------------------------------[ CALLBACKS CONTROL POINT ]--
 
+// ConnectControl connects media callbacks.
+//
 func (gui *TVGui) ConnectControl() {
 	hook := gui.control.SubscribeHook("gui")
 	hook.OnRendererFound = gui.AddRenderer
@@ -211,12 +207,17 @@ func (gui *TVGui) ConnectControl() {
 	hook.OnVolume = func(r *upnpcp.Renderer, vol uint) { gui.SetVolume(int(vol)) }
 	hook.OnCurrentTime = func(r *upnpcp.Renderer, secs int, f float64) { gui.SetCurrentTime(secs, f*100) }
 	hook.OnSetVolumeDelta = func(delta int) { gui.SetVolumeDelta(delta) }
+	// hook.OnSetSeekDelta = func(delta int) { gui.SetSeekDelta(delta) }
 }
 
+// DisconnectControl removes media callbacks.
+//
 func (gui *TVGui) DisconnectControl() {
 	gui.control.UnsubscribeHook("gui")
 }
 
+// AddRenderer adds a media renderer to the gui.
+//
 func (gui *TVGui) AddRenderer(rend *upnpcp.Renderer) {
 	iter := gui.model.Append()
 	gui.rendererIters[rend.Udn] = iter
@@ -224,13 +225,15 @@ func (gui *TVGui) AddRenderer(rend *upnpcp.Renderer) {
 	gui.model.SetValue(iter, RowText, rend.Name)
 	gui.model.SetValue(iter, RowUDN, rend.Udn)
 
-	// if rend.Icon != "" {
-	// 	if pix, e := common.PixbufAtSize(rend.Icon, 24, 24); !log.Err(e, "pixbuf icon") {
-	// 		gui.model.SetPixbuf(iter, RowIcon, pix)
-	// 	}
-	// }
+	if rend.Icon != "" {
+		if pix, e := common.PixbufAtSize(rend.Icon, 24, 24); !log.Err(e, "pixbuf icon") {
+			gui.model.SetValue(iter, RowIcon, pix)
+		}
+	}
 }
 
+// AddServer adds a media server to the gui.
+//
 func (gui *TVGui) AddServer(srv *upnpcp.Server) {
 	iter := gui.serverModel.Append()
 	gui.serverIters[srv.Udn] = iter
@@ -238,23 +241,27 @@ func (gui *TVGui) AddServer(srv *upnpcp.Server) {
 	gui.serverModel.SetValue(iter, RowText, srv.Name)
 	gui.serverModel.SetValue(iter, RowUDN, srv.Udn)
 
-	// if srv.Icon != "" {
-	// 	if pix, e := common.PixbufAtSize(srv.Icon, 24, 24); !log.Err(e, "pixbuf icon") {
-	// 		gui.serverModel.SetPixbuf(iter, RowIcon, pix)
-	// 	}
-	// }
+	if srv.Icon != "" {
+		if pix, e := common.PixbufAtSize(srv.Icon, 24, 24); !log.Err(e, "pixbuf icon") {
+			gui.serverModel.SetValue(iter, RowIcon, pix)
+		}
+	}
 }
 
+// RemoveRenderer removes a media renderer from the gui.
+//
 func (gui *TVGui) RemoveRenderer(rend *upnpcp.Renderer) {
 	gui.model.Remove(gui.rendererIters[rend.Udn])
 	delete(gui.rendererIters, rend.Udn)
 }
 
+// RemoveServer removes a media server from the gui.
+//
 func (gui *TVGui) RemoveServer(srv *upnpcp.Server) {
 
 	// log.Info("DEL", srv.Name)
 
-	// if sddderver was selected, clear list.
+	// if server was selected, clear list.
 	// iter, e := gui.server.GetActiveIter()
 	// if e == nil {
 	// 	v, _ := gui.serverModel.GetValue(iter, RowUDN)
@@ -283,7 +290,7 @@ func (gui *TVGui) SetRenderer(rend *upnpcp.Renderer) {
 	gui.renderer.HandlerUnblock(gui.callRenderer)
 }
 
-// SetRenderer selects a server in the combo. Don't propagate event.
+// SetServer selects a server in the combo. Don't propagate event.
 //
 func (gui *TVGui) SetServer(srv *upnpcp.Server) {
 	gui.filesModel.Clear()
@@ -317,7 +324,7 @@ func (gui *TVGui) SetVolumeDelta(delta int) {
 }
 
 // func (gui *TVGui) SetSeekDelta(delta int) {
-// 	// gui.seek.SetPageIncrement(float64(delta))
+// 	gui.seekAdj.SetPageIncrement(float64(delta))
 // }
 
 //
