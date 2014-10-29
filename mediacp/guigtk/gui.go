@@ -4,8 +4,8 @@ import (
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 
-	"github.com/sqp/godock/widgets/buildHelper"
 	"github.com/sqp/godock/widgets/common"
+	"github.com/sqp/godock/widgets/gtk/buildhelp"
 
 	"github.com/sqp/godock/libs/log"
 
@@ -106,7 +106,7 @@ type TVGui struct {
 //
 func NewTVGui(control *mediacp.MediaControl) *TVGui {
 
-	builder := buildHelper.New()
+	builder := buildhelp.New()
 	builder.AddFromString(string(guigtk_xml()))
 	// builder.AddFromFile("src/guigtk.xml")
 
