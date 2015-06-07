@@ -1,3 +1,5 @@
+// Package upnpcp manages media renderers and servers on the UPnP network.
+//
 package upnpcp
 
 import (

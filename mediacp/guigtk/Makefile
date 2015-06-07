@@ -1,8 +1,7 @@
 TARGET=guigtk
-PKG=$(TARGET)
 
 %: bindata
 
 bindata:
 	rm -f $(TARGET).xml.go
-	go-bindata -pkg=$(PKG) $(TARGET).xml 
+	go-bindata -pkg=$(TARGET) -func=$(TARGET)XML $(TARGET).xml 

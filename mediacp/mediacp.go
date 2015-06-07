@@ -1,11 +1,5 @@
 // Package mediacp manages media renderers and servers on the UPnP network.
 //
-// Digital media servers (DMS)
-// A database of multimedia content, that other devices can play media from
-// Digital media renderers (DMR)
-// Plays stuff, that is it makes sound and in required cases shows moving images.
-// Digital media controllers (DMC)
-// A device that works as a remote control, can play stop, skip, pause, change loudness, brightness etcetera.
 package mediacp
 
 import (

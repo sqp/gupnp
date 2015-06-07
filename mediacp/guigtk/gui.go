@@ -1,3 +1,5 @@
+// Package guigtk provides a simple GTK3 GUI to interact with UPnP media players.
+//
 package guigtk
 
 import (
@@ -32,7 +34,7 @@ const (
 
 // NewGui creates a window with a TVGui widget.
 //
-func NewGui(control *mediacp.MediaControl, show bool) (*TVGui, *gtk.Window) {
+func NewGui(control *mediacp.MediaControl) (*TVGui, *gtk.Window) {
 	gui := NewTVGui(control)
 	if gui == nil {
 		return nil, nil
@@ -51,11 +53,6 @@ func NewGui(control *mediacp.MediaControl, show bool) (*TVGui, *gtk.Window) {
 	window.SetWMClass(WindowTitle, WindowTitle)
 	window.ShowAll()
 
-	window.Connect("delete-event", func() bool { window.Iconify(); return true })
-
-	if !show {
-		window.Iconify()
-	}
 	return gui, window
 }
 
@@ -107,7 +104,7 @@ type TVGui struct {
 func NewTVGui(control *mediacp.MediaControl) *TVGui {
 
 	builder := buildhelp.New()
-	builder.AddFromString(string(guigtk_xml()))
+	builder.AddFromString(string(guigtkXML()))
 	// builder.AddFromFile("src/guigtk.xml")
 
 	box := builder.GetBox("box")
@@ -319,6 +316,8 @@ func (gui *TVGui) SetServer(srv *upnpcp.Server) {
 // 	return nil, e
 // }
 
+// SetVolumeDelta sets the volume interval for volume changes.
+//
 func (gui *TVGui) SetVolumeDelta(delta int) {
 	gui.volume.SetPageIncrement(float64(delta))
 }
