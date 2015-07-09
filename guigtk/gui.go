@@ -11,15 +11,7 @@ import (
 
 	"github.com/sqp/godock/libs/log"
 
-	"github.com/sqp/gupnp/mediacp"
-	"github.com/sqp/gupnp/upnpcp"
-)
-
-// Window settings.
-const (
-	WindowTitle  = "TVPlay"
-	WindowWidth  = 250
-	WindowHeight = 400
+	"github.com/sqp/gupnp/upnptype"
 )
 
 // Rows for renderer and server comboboxes.
@@ -32,9 +24,20 @@ const (
 	RowVisible
 )
 
+// Window settings.
+const (
+	WindowWidth  = 250
+	WindowHeight = 400
+)
+
+var (
+	// WindowTitle defines the title of the window.
+	WindowTitle = "TVPlay"
+)
+
 // NewGui creates a window with a TVGui widget.
 //
-func NewGui(control *mediacp.MediaControl) (*TVGui, *gtk.Window) {
+func NewGui(control upnptype.MediaControl) (*TVGui, *gtk.Window) {
 	gui := NewTVGui(control)
 	if gui == nil {
 		return nil, nil
@@ -93,7 +96,7 @@ type TVGui struct {
 	rendererIters map[string]*gtk.TreeIter
 	serverIters   map[string]*gtk.TreeIter
 
-	control *mediacp.MediaControl
+	control upnptype.MediaControl
 }
 
 // NewTVGui creates a new TVGui widget.
@@ -101,7 +104,7 @@ type TVGui struct {
 // Parameters:
 //   control   *MediaControl     The UPnP media control point interface.
 //
-func NewTVGui(control *mediacp.MediaControl) *TVGui {
+func NewTVGui(control upnptype.MediaControl) *TVGui {
 
 	builder := buildhelp.New()
 	builder.AddFromString(string(guigtkXML()))
@@ -156,13 +159,13 @@ func NewTVGui(control *mediacp.MediaControl) *TVGui {
 	gui.files.Connect("row-activated", gui.onFilesSelected)
 
 	gui.callVolume, _ = gui.volume.Connect("value-changed", func() { gui.onVolumeSelected(gui.volume.GetValue()) })
-	gui.callSeekAdj, _ = gui.seekAdj.Connect("value-changed", func() { gui.control.SetSeekPercent(gui.seekAdj.GetValue()) })
-	gui.callMuted, _ = gui.muted.Connect("toggled", func() { gui.control.Action(mediacp.ActionToggleMute) })
-	gui.play.Connect("clicked", func() { gui.control.Action(mediacp.ActionPlayPause) })
-	gui.stop.Connect("clicked", func() { gui.control.Action(mediacp.ActionStop) })
+	gui.callSeekAdj, _ = gui.seekAdj.Connect("value-changed", func() { gui.control.SeekPercent(gui.seekAdj.GetValue()) })
+	gui.callMuted, _ = gui.muted.Connect("toggled", func() { gui.control.Action(upnptype.ActionToggleMute) })
+	gui.play.Connect("clicked", func() { gui.control.Action(upnptype.ActionPlayPause) })
+	gui.stop.Connect("clicked", func() { gui.control.Action(upnptype.ActionStop) })
 
-	gui.backward.Connect("clicked", func() { gui.control.Action(mediacp.ActionSeekBackward) })
-	gui.forward.Connect("clicked", func() { gui.control.Action(mediacp.ActionSeekForward) })
+	gui.backward.Connect("clicked", func() { gui.control.Action(upnptype.ActionSeekBackward) })
+	gui.forward.Connect("clicked", func() { gui.control.Action(upnptype.ActionSeekForward) })
 
 	gui.ConnectControl()
 
@@ -172,7 +175,7 @@ func NewTVGui(control *mediacp.MediaControl) *TVGui {
 // Load fills renderers and servers combo boxes.
 //
 func (gui *TVGui) Load() {
-	gui.SetPlaybackState(upnpcp.PlaybackStateUnknown)
+	gui.SetPlaybackState(upnptype.PlaybackStateUnknown)
 
 	for _, rend := range gui.control.Renderers() {
 		gui.AddRenderer(rend)
@@ -197,12 +200,12 @@ func (gui *TVGui) ConnectControl() {
 	hook.OnRendererLost = gui.RemoveRenderer
 	hook.OnServerLost = gui.RemoveServer
 
-	hook.OnTransportState = func(r *upnpcp.Renderer, state upnpcp.PlaybackState) { gui.SetPlaybackState(state) }
-	hook.OnCurrentTrackDuration = func(r *upnpcp.Renderer, dur int) { gui.SetDuration(mediacp.TimeToString(dur)) }
-	hook.OnCurrentTrackMetaData = func(r *upnpcp.Renderer, item *upnpcp.Item) { gui.SetTitle(item.Title) }
-	hook.OnMute = func(r *upnpcp.Renderer, muted bool) { gui.SetMuted(muted) }
-	hook.OnVolume = func(r *upnpcp.Renderer, vol uint) { gui.SetVolume(int(vol)) }
-	hook.OnCurrentTime = func(r *upnpcp.Renderer, secs int, f float64) { gui.SetCurrentTime(secs, f*100) }
+	hook.OnTransportState = func(r upnptype.Renderer, state upnptype.PlaybackState) { gui.SetPlaybackState(state) }
+	hook.OnCurrentTrackDuration = func(r upnptype.Renderer, dur int) { gui.SetDuration(upnptype.TimeToString(dur)) }
+	hook.OnCurrentTrackMetaData = func(r upnptype.Renderer, item *upnptype.Item) { gui.SetTitle(item.Title) }
+	hook.OnMute = func(r upnptype.Renderer, muted bool) { gui.SetMuted(muted) }
+	hook.OnVolume = func(r upnptype.Renderer, vol uint) { gui.SetVolume(int(vol)) }
+	hook.OnCurrentTime = func(r upnptype.Renderer, secs int, f float64) { gui.SetCurrentTime(secs, f*100) }
 	hook.OnSetVolumeDelta = func(delta int) { gui.SetVolumeDelta(delta) }
 	// hook.OnSetSeekDelta = func(delta int) { gui.SetSeekDelta(delta) }
 }
@@ -215,93 +218,104 @@ func (gui *TVGui) DisconnectControl() {
 
 // AddRenderer adds a media renderer to the gui.
 //
-func (gui *TVGui) AddRenderer(rend *upnpcp.Renderer) {
-	iter := gui.model.Append()
-	gui.rendererIters[rend.Udn] = iter
+func (gui *TVGui) AddRenderer(rend upnptype.Renderer) {
+	glib.IdleAdd(func() {
+		iter := gui.model.Append()
+		gui.rendererIters[rend.UDN()] = iter
 
-	gui.model.SetValue(iter, RowText, rend.Name)
-	gui.model.SetValue(iter, RowUDN, rend.Udn)
+		gui.model.SetValue(iter, RowText, rend.Name())
+		gui.model.SetValue(iter, RowUDN, rend.UDN())
 
-	if rend.Icon != "" {
-		if pix, e := common.PixbufAtSize(rend.Icon, 24, 24); !log.Err(e, "pixbuf icon") {
-			gui.model.SetValue(iter, RowIcon, pix)
+		if rend.Icon() != "" {
+			if pix, e := common.PixbufAtSize(rend.Icon(), 24, 24); !log.Err(e, "pixbuf icon") {
+				gui.model.SetValue(iter, RowIcon, pix)
+			}
 		}
-	}
+	})
 }
 
 // AddServer adds a media server to the gui.
 //
-func (gui *TVGui) AddServer(srv *upnpcp.Server) {
-	iter := gui.serverModel.Append()
-	gui.serverIters[srv.Udn] = iter
+func (gui *TVGui) AddServer(srv upnptype.Server) {
+	glib.IdleAdd(func() {
+		iter := gui.serverModel.Append()
+		gui.serverIters[srv.UDN()] = iter
 
-	gui.serverModel.SetValue(iter, RowText, srv.Name)
-	gui.serverModel.SetValue(iter, RowUDN, srv.Udn)
+		gui.serverModel.SetValue(iter, RowText, srv.Name())
+		gui.serverModel.SetValue(iter, RowUDN, srv.UDN())
 
-	if srv.Icon != "" {
-		if pix, e := common.PixbufAtSize(srv.Icon, 24, 24); !log.Err(e, "pixbuf icon") {
-			gui.serverModel.SetValue(iter, RowIcon, pix)
+		if srv.Icon() != "" {
+			if pix, e := common.PixbufAtSize(srv.Icon(), 24, 24); !log.Err(e, "pixbuf icon") {
+				gui.serverModel.SetValue(iter, RowIcon, pix)
+			}
 		}
-	}
+	})
 }
 
 // RemoveRenderer removes a media renderer from the gui.
 //
-func (gui *TVGui) RemoveRenderer(rend *upnpcp.Renderer) {
-	gui.model.Remove(gui.rendererIters[rend.Udn])
-	delete(gui.rendererIters, rend.Udn)
+func (gui *TVGui) RemoveRenderer(rend upnptype.Renderer) {
+	glib.IdleAdd(func() {
+		gui.model.Remove(gui.rendererIters[rend.UDN()])
+	})
+	delete(gui.rendererIters, rend.UDN())
 }
 
 // RemoveServer removes a media server from the gui.
 //
-func (gui *TVGui) RemoveServer(srv *upnpcp.Server) {
+func (gui *TVGui) RemoveServer(srv upnptype.Server) {
 
-	// log.Info("DEL", srv.Name)
+	// log.Info("DEL", srv.Name())
 
 	// if server was selected, clear list.
 	// iter, e := gui.server.GetActiveIter()
 	// if e == nil {
 	// 	v, _ := gui.serverModel.GetValue(iter, RowUDN)
 	// 	udn, _ := v.GetString()
-	// 	if udn == srv.Udn {
+	// 	if udn == srv.UDN() {
 	// 		gui.filesModel.Clear()
 	// 	}
 	// }
-
-	gui.serverModel.Remove(gui.serverIters[srv.Udn])
-	delete(gui.serverIters, srv.Udn)
+	glib.IdleAdd(func() {
+		gui.serverModel.Remove(gui.serverIters[srv.UDN()])
+	})
+	delete(gui.serverIters, srv.UDN())
 }
 
 // SetRenderer selects a renderer in the combo. Don't propagate event.
 //
-func (gui *TVGui) SetRenderer(rend *upnpcp.Renderer) {
-	var iter *gtk.TreeIter
-	if rend != nil {
-		if _, ok := gui.rendererIters[rend.Udn]; ok {
-			iter = gui.rendererIters[rend.Udn]
-			// if was selected, blank everything
+func (gui *TVGui) SetRenderer(rend upnptype.Renderer) {
+	glib.IdleAdd(func() {
+		var iter *gtk.TreeIter
+		if rend != nil {
+			if _, ok := gui.rendererIters[rend.UDN()]; ok {
+				iter = gui.rendererIters[rend.UDN()]
+				// if was selected, blank everything
+			}
 		}
-	}
-	gui.renderer.HandlerBlock(gui.callRenderer)
-	gui.renderer.SetActiveIter(iter)
-	gui.renderer.HandlerUnblock(gui.callRenderer)
+		gui.renderer.HandlerBlock(gui.callRenderer)
+		gui.renderer.SetActiveIter(iter)
+		gui.renderer.HandlerUnblock(gui.callRenderer)
+	})
 }
 
 // SetServer selects a server in the combo. Don't propagate event.
 //
-func (gui *TVGui) SetServer(srv *upnpcp.Server) {
+func (gui *TVGui) SetServer(srv upnptype.Server) {
 	gui.filesModel.Clear()
 
-	var iter *gtk.TreeIter
-	if srv != nil {
-		if _, ok := gui.serverIters[srv.Udn]; ok {
-			iter = gui.serverIters[srv.Udn]
-			gui.browseDirectory("0", nil)
+	glib.IdleAdd(func() {
+		var iter *gtk.TreeIter
+		if srv != nil {
+			if _, ok := gui.serverIters[srv.UDN()]; ok {
+				iter = gui.serverIters[srv.UDN()]
+				gui.browseDirectory("0", nil)
+			}
 		}
-	}
-	gui.server.HandlerBlock(gui.callServer)
-	gui.server.SetActiveIter(iter)
-	gui.server.HandlerUnblock(gui.callServer)
+		gui.server.HandlerBlock(gui.callServer)
+		gui.server.SetActiveIter(iter)
+		gui.server.HandlerUnblock(gui.callServer)
+	})
 }
 
 // func (gui *TVGui) SelectedRenderer() (*Renderer, error) {
@@ -319,12 +333,18 @@ func (gui *TVGui) SetServer(srv *upnpcp.Server) {
 // SetVolumeDelta sets the volume interval for volume changes.
 //
 func (gui *TVGui) SetVolumeDelta(delta int) {
-	gui.volume.SetPageIncrement(float64(delta))
+	glib.IdleAdd(func() {
+		gui.volume.SetPageIncrement(float64(delta))
+	})
 }
 
-// func (gui *TVGui) SetSeekDelta(delta int) {
-// 	gui.seekAdj.SetPageIncrement(float64(delta))
-// }
+// SetSeekDelta configures the default seek delta for user actions.
+//
+func (gui *TVGui) SetSeekDelta(delta int) {
+	glib.IdleAdd(func() {
+		gui.seekAdj.SetPageIncrement(float64(delta))
+	})
+}
 
 //
 //----------------------------------------------------------------[ SET INFO ]--
@@ -332,72 +352,89 @@ func (gui *TVGui) SetVolumeDelta(delta int) {
 // SetCurrentTime sets the position of the timer slider.
 //
 func (gui *TVGui) SetCurrentTime(secs int, percent float64) {
-	gui.abstime.SetLabel(mediacp.TimeToString(secs))
+	glib.IdleAdd(func() {
+		gui.abstime.SetLabel(upnptype.TimeToString(secs))
 
-	gui.seekAdj.HandlerBlock(gui.callSeekAdj)
-	gui.seekAdj.SetValue(float64(percent))
-	gui.seekAdj.HandlerUnblock(gui.callSeekAdj)
+		gui.seekAdj.HandlerBlock(gui.callSeekAdj)
+		gui.seekAdj.SetValue(float64(percent))
+		gui.seekAdj.HandlerUnblock(gui.callSeekAdj)
+	})
 }
 
 // SetDuration sets the content of the duration label.
 //
 func (gui *TVGui) SetDuration(dur string) {
-	gui.duration.SetLabel(dur)
+	glib.IdleAdd(func() {
+		gui.duration.SetLabel(dur)
+	})
 }
 
 // SetMuted sets the position of the muted button.
 //
 func (gui *TVGui) SetMuted(muted bool) {
-	gui.muted.HandlerBlock(gui.callMuted)
-	gui.muted.SetActive(!muted)
-	gui.muted.HandlerUnblock(gui.callMuted)
+	glib.IdleAdd(func() {
+		gui.muted.HandlerBlock(gui.callMuted)
+		gui.muted.SetActive(!muted)
+		gui.muted.HandlerUnblock(gui.callMuted)
+	})
 }
 
 // SetTitle sets the content of the title label.
 //
 func (gui *TVGui) SetTitle(title string) {
-	gui.title.SetLabel(title)
+	glib.IdleAdd(func() {
+		gui.title.SetLabel(title)
+	})
 }
 
 // SetVolume sets the position of the volume slider.
 //
 func (gui *TVGui) SetVolume(vol int) {
-	gui.volume.HandlerBlock(gui.callVolume)
-	gui.volume.SetValue(float64(vol))
-	gui.volume.HandlerUnblock(gui.callVolume)
+	glib.IdleAdd(func() {
+		gui.volume.HandlerBlock(gui.callVolume)
+		gui.volume.SetValue(float64(vol))
+		gui.volume.HandlerUnblock(gui.callVolume)
+	})
 }
 
 // SetPlaybackState update controls according to the new state.
 //
-func (gui *TVGui) SetPlaybackState(state upnpcp.PlaybackState) {
-	switch state {
-	case upnpcp.PlaybackStateUnknown, upnpcp.PlaybackStateTransitioning: // not sure about the disable when unknown. could prevent from returning to a good state.
-		gui.setControlsActive(false)
-		gui.seekScale.SetSensitive(false)
-		gui.backward.SetSensitive(false)
-		gui.forward.SetSensitive(false)
+func (gui *TVGui) SetPlaybackState(state upnptype.PlaybackState) {
+	glib.IdleAdd(func() {
 
-	case upnpcp.PlaybackStatePaused, upnpcp.PlaybackStateStopped:
-		imgplay, _ := gtk.ImageNewFromIconName("media-playback-start", gtk.ICON_SIZE_SMALL_TOOLBAR)
-		gui.play.SetImage(imgplay)
-		gui.setControlsActive(true)
-		gui.seekScale.SetSensitive(false)
-		gui.backward.SetSensitive(false)
-		gui.forward.SetSensitive(false)
+		// println("state GUI", state)
 
-	case upnpcp.PlaybackStatePlaying:
-		imgplay, _ := gtk.ImageNewFromIconName("media-playback-pause", gtk.ICON_SIZE_SMALL_TOOLBAR)
-		gui.play.SetImage(imgplay)
-		gui.setControlsActive(true)
-		gui.seekScale.SetSensitive(true)
-		gui.backward.SetSensitive(true)
-		gui.forward.SetSensitive(true)
-	}
+		switch state {
+		case upnptype.PlaybackStateUnknown, upnptype.PlaybackStateTransitioning: // not sure about the disable when unknown. could prevent from returning to a good state.
+			gui.setControlsActive(false)
+			gui.seekScale.SetSensitive(false)
+			gui.backward.SetSensitive(false)
+			gui.forward.SetSensitive(false)
+
+		case upnptype.PlaybackStatePaused, upnptype.PlaybackStateStopped:
+			imgplay, _ := gtk.ImageNewFromIconName("media-playback-start", gtk.ICON_SIZE_SMALL_TOOLBAR)
+			gui.play.SetImage(imgplay)
+			gui.setControlsActive(true)
+			gui.seekScale.SetSensitive(false)
+			gui.backward.SetSensitive(false)
+			gui.forward.SetSensitive(false)
+
+		case upnptype.PlaybackStatePlaying:
+			imgplay, _ := gtk.ImageNewFromIconName("media-playback-pause", gtk.ICON_SIZE_SMALL_TOOLBAR)
+			gui.play.SetImage(imgplay)
+			gui.setControlsActive(true)
+			gui.seekScale.SetSensitive(true)
+			gui.backward.SetSensitive(true)
+			gui.forward.SetSensitive(true)
+		}
+	})
 }
 
 func (gui *TVGui) setControlsActive(active bool) {
-	gui.play.SetSensitive(active)
-	gui.stop.SetSensitive(active)
+	glib.IdleAdd(func() {
+		gui.play.SetSensitive(active)
+		gui.stop.SetSensitive(active)
+	})
 }
 
 //
@@ -438,7 +475,7 @@ func (gui *TVGui) onFilesSelected() {
 
 func (gui *TVGui) onVolumeSelected(value float64) {
 	if gui.control.RendererExists() {
-		gui.control.Renderer().SetVolume(uint(value))
+		gui.control.Renderer().SetVolume(0, upnptype.ChannelMaster, uint16(value))
 	}
 }
 

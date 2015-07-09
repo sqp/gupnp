@@ -1,25 +1,4 @@
-// Package gupnp provides an API and GUI to control DLNA/UPnP devices like network TV and radio.
-//
-// Its goal is to locate media servers (with files) and media players.
-// You can then send commands to players (volume, pause...) and let them play
-// the selected music or video content.
-// Can also be used as just a limited remote controler for supported renderers.
-//
-// Digital media servers - DMS
-//
-// A database of multimedia content, that other devices can play media from.
-//
-// Digital media renderers - DMR
-//
-// Plays stuff, that is it makes sound and in required cases shows moving images.
-//
-// Digital media controllers - DMC
-//
-// A device that works as a remote control, can play stop, skip, pause, change
-// loudness, brightness etcetera.
-//
-//
-// This package the low level binding.
+// Package gupnp provides the low level binding for the C gupnp-av library.
 package gupnp
 
 /*
