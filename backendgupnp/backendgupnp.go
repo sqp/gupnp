@@ -5,7 +5,7 @@ package backendgupnp
 import (
 	"github.com/clbanning/mxj"
 
-	"github.com/conformal/gotk3/glib"
+	"github.com/gotk3/gotk3/glib"
 
 	"github.com/sqp/godock/libs/log"
 	"github.com/sqp/godock/libs/ternary"

@@ -37,7 +37,7 @@ static gboolean service_proxy_add_notify (GUPnPServiceProxy *rendering_control, 
 import "C"
 
 import (
-	"github.com/conformal/gotk3/glib"
+	"github.com/gotk3/gotk3/glib"
 
 	"github.com/sqp/godock/libs/log"
 
