@@ -463,11 +463,10 @@ func (gui *TVGui) onServerChanged() {
 }
 
 func (gui *TVGui) onFilesSelected() {
-	var iter gtk.TreeIter
 	filesSelection, _ := gui.files.GetSelection()
-	var interf gtk.ITreeModel = gui.filesModel
-	if filesSelection.GetSelected(&interf, &iter) {
-		v, _ := gui.filesModel.GetValue(&iter, RowUDN)
+	_, iter, ok := filesSelection.GetSelected()
+	if ok {
+		v, _ := gui.filesModel.GetValue(iter, RowUDN)
 		ID, _ := v.GetString()
 		gui.control.BrowseMetadata(ID, 0)
 	}
